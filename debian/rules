@@ -13,7 +13,7 @@ export DH_VERBOSE=1
 #  https://code.ros.org/trac/ros/ticket/2977
 #  https://code.ros.org/trac/ros/ticket/3842
 export LDFLAGS=
-export PKG_CONFIG_PATH=@(InstallationPrefix)/lib/pkgconfig
+export PKG_CONFIG_PATH=/opt/ros/cargotest/lib/pkgconfig
 # Explicitly enable -DNDEBUG, see:
 # 	https://github.com/ros-infrastructure/bloom/issues/327
 export DEB_CXXFLAGS_MAINT_APPEND=-DNDEBUG
@@ -21,7 +21,7 @@ export DEB_CXXFLAGS_MAINT_APPEND=-DNDEBUG
 DEB_HOST_GNU_TYPE ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
 
 %:
-	dh $@@ -v --buildsystem=cargo --builddirectory=.obj-$(DEB_HOST_GNU_TYPE)
+	dh $@ -v --buildsystem=cargo --builddirectory=.obj-$(DEB_HOST_GNU_TYPE)
 
 override_dh_auto_configure:
 	# dh-cargo's configure step expects these two files to exist, even when
@@ -31,11 +31,11 @@ override_dh_auto_configure:
 	# In case we're installing to a non-standard location, look for a setup.sh
 	# in the install tree and source it.  It will set things like
 	# CMAKE_PREFIX_PATH, PKG_CONFIG_PATH, and PYTHONPATH.
-	if [ -f "@(InstallationPrefix)/setup.sh" ]; then . "@(InstallationPrefix)/setup.sh"; fi && \
+	if [ -f "/opt/ros/cargotest/setup.sh" ]; then . "/opt/ros/cargotest/setup.sh"; fi && \
 	dh_auto_configure
 	# Generate a pallet-patcher config so that, once we have a viable
 	# vendoring solution, we can point cargo to local deps
-	pallet-patcher --output-format=toml Cargo.toml @(InstallationPrefix)/share/cargo/registry > pallet-patcher.toml
+	pallet-patcher --output-format=toml Cargo.toml /opt/ros/cargotest/share/cargo/registry > pallet-patcher.toml
 
 override_dh_auto_clean:
 	dh_auto_clean
@@ -45,7 +45,7 @@ override_dh_auto_build:
 	# In case we're installing to a non-standard location, look for a setup.sh
 	# in the install tree and source it.  It will set things like
 	# CMAKE_PREFIX_PATH, PKG_CONFIG_PATH, and PYTHONPATH.
-	if [ -f "@(InstallationPrefix)/setup.sh" ]; then . "@(InstallationPrefix)/setup.sh"; fi
+	if [ -f "/opt/ros/cargotest/setup.sh" ]; then . "/opt/ros/cargotest/setup.sh"; fi
 	# Call cargo directly to avoid the dh-cargo Python wrapper interfering
 	# with registry resolution when dependencies are pre-fetched offline.
 	# `cargo auditable` is a drop-in wrapper that embeds a compressed JSON
@@ -60,7 +60,7 @@ override_dh_auto_test:
 	# in the install tree and source it.  It will set things like
 	# CMAKE_PREFIX_PATH, PKG_CONFIG_PATH, and PYTHONPATH.
 	echo -- Running tests. Even if one of them fails the build is not canceled.
-	if [ -f "@(InstallationPrefix)/setup.sh" ]; then . "@(InstallationPrefix)/setup.sh"; fi
+	if [ -f "/opt/ros/cargotest/setup.sh" ]; then . "/opt/ros/cargotest/setup.sh"; fi
 	cargo test || true
 
 override_dh_auto_install:
@@ -77,14 +77,14 @@ override_dh_auto_install:
 	#     section. Tools that read it: cargo audit bin, trivy, grype, syft,
 	#     osv-scanner, rust-audit-info. --no-track suppresses .crates.toml.
 	set -e ; \
-	if [ -f "@(InstallationPrefix)/setup.sh" ]; then . "@(InstallationPrefix)/setup.sh"; fi ; \
+	if [ -f "/opt/ros/cargotest/setup.sh" ]; then . "/opt/ros/cargotest/setup.sh"; fi ; \
 	META=$$(cargo metadata --no-deps --format-version 1) ; \
 	CRATE_NAME=$$(printf '%s' "$$META" | python3 -c "import sys,json;print(json.load(sys.stdin)['packages'][0]['name'])") ; \
 	CRATE_VER=$$(printf '%s' "$$META" | python3 -c "import sys,json;print(json.load(sys.stdin)['packages'][0]['version'])") ; \
 	HAS_LIB=$$(printf '%s' "$$META" | python3 -c "import sys,json;p=json.load(sys.stdin)['packages'][0];L={'lib','rlib','dylib','cdylib','staticlib','proc-macro'};print(int(any(k in L for t in p['targets'] for k in t['kind'])))") ; \
 	HAS_BIN=$$(printf '%s' "$$META" | python3 -c "import sys,json;p=json.load(sys.stdin)['packages'][0];print(int(any('bin' in t['kind'] for t in p['targets'])))") ; \
 	if [ "$$HAS_LIB" = "1" ]; then \
-		TARGET="$(CURDIR)/debian/@(Package)@(InstallationPrefix)/share/cargo/registry/$$CRATE_NAME-$$CRATE_VER" ; \
+		TARGET="$(CURDIR)/debian/ros-cargotest-demo-cargo-pkg-app/opt/ros/cargotest/share/cargo/registry/$$CRATE_NAME-$$CRATE_VER" ; \
 		install -d "$$TARGET" ; \
 		find . -mindepth 1 -maxdepth 1 \
 			\! -name target \! -name debian \! -name .git \
@@ -92,10 +92,10 @@ override_dh_auto_install:
 			-exec cp -a -t "$$TARGET" {} + ; \
 		rm -rf "$$TARGET/target" ; \
 		cp debian/cargo-checksum.json "$$TARGET/.cargo-checksum.json" ; \
-		[ -z "$$SOURCE_DATE_EPOCH" ] || touch -d@@ $$SOURCE_DATE_EPOCH "$$TARGET/Cargo.toml" ; \
+		[ -z "$$SOURCE_DATE_EPOCH" ] || touch -d@ $$SOURCE_DATE_EPOCH "$$TARGET/Cargo.toml" ; \
 	fi ; \
 	if [ "$$HAS_BIN" = "1" ]; then \
 		cargo auditable install --path . \
-			--root "$(CURDIR)/debian/@(Package)@(InstallationPrefix)" \
+			--root "$(CURDIR)/debian/ros-cargotest-demo-cargo-pkg-app/opt/ros/cargotest" \
 			--no-track ; \
 	fi
