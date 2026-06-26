@@ -1,0 +1,10 @@
+[package]
+name = "demo_cargo_pkg_app"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "A demonstrational binary application that consumes a local helper library."
+
+[dependencies]
+demo_cargo_pkg_lib = { version = "0.1.0", path = "../demo_cargo_pkg_lib" }
+colored = "2.1.0"
